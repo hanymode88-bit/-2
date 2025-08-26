@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>شبكتي — ملف واحد (أدمن + لوحة تحكم)</title>
+  <style>
+    *{box-sizing:border-box}html,body{height:100%}body{margin:0;font-family:Tahoma,Arial,sans-serif;background:#f0f2f5;color:#111827}
+    .hidden{display:none!important}button{cursor:pointer}
+    .app{display:grid;grid-template-columns:260px 1fr;min-height:100vh}
+    .sidebar{background:#fff;border-left:1px solid #e5e7eb;padding:20px;display:flex;flex-direction:column;gap:14px}
+    .brand{font-weight:800;font-size:20px;color:#1877f2}
+    .nav{display:grid;gap:6px}.nav button{padding:10px;border:1px solid #e5e7eb;background:#fff;border-radius:10px;text-align:right}
+    .nav button.active{background:#1877f2;color:#fff;border-color:#1877f2}
+    .logout{margin-top:auto;background:#ef4444;color:#fff;border:none;padding:10px 12px;border-radius:10px}
+    .content{min-width:0}.topbar{position:sticky;top:0;background:#fff;border-bottom:1px solid #e5e7eb;padding:10px 16px;display:flex;gap:10px;align-items:center}
+    .search{flex:1}.search input{width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#f9fafb}
+    .page{padding:18px;display:none}.page.active{display:block}
+    .card{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px}
+    .stack{display:grid;gap:12px}.row{display:flex;gap:10px;align-items:center}.between{display:flex;justify-content:space-between;align-items:center;gap:10px}
+    .btn{border:1px solid #e5e7eb;background:#fff;padding:8px 12px;border-radius:10px}
+    .btn.primary{background:#1877f2;color:#fff;border-color:#1877f2}.btn.success{background:#10b981;color:#fff;border-color:#10b981}.btn.warn{background:#f59e0b;color:#fff;border-color:#f59e0b}.btn.danger{background:#ef4444;color:#fff;border-color:#ef4444}.btn.ghost{background:#f1f5f9}
+    .input,textarea{width:100%;padding:10px;border:1px solid #e5e7eb;border-radius:10px;background:#fff}textarea{resize:vertical;min-height:90px}
+    .avatar{width:44px;height:44px;border-radius:50%;object-fit:cover;background:#e5e7eb}.muted{color:#6b7280;font-size:12px}
+    .composer{display:grid;gap:10px}
+    .post{display:grid;gap:6px}.post .meta{display:flex;gap:10px;align-items:center}.post img.media{max-width:100%;border-radius:10px;border:1px solid #e5e7eb}
+    .comment{background:#f8fafc;border:1px solid #e5e7eb;border-radius:10px;padding:8px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+    .messagesLayout{display:grid;grid-template-columns:280px 1fr;gap:12px}
+    .threadList{background:#fff;border:1px solid #e5e7eb;border-radius:14px;overflow:auto;max-height:calc(100vh - 180px)}
+    .threadItem{padding:12px;border-bottom:1px solid #f3f4f6;display:flex;gap:10px;align-items:center;cursor:pointer}.threadItem.active{background:#eef2ff}
+    .chat{background:#fff;border:1px solid #e5e7eb;border-radius:14px;display:grid;grid-template-rows:1fr auto;height:calc(100vh - 180px)}
+    .chatLog{padding:14px;overflow:auto}.bubble{max-width:70%;padding:10px 12px;border-radius:12px;margin:6px 0;background:#f3f4f6}.bubble.me{background:#dbeafe;margin-right:auto}
+    .table{width:100%;border-collapse:collapse}.table th,.table td{border:1px solid #e5e7eb;padding:8px;text-align:right}.table th{background:#f1f5f9}
+    .auth{min-height:100vh;display:grid;place-items:center;background:#e5f3ff;padding:20px}.auth .panel{width:100%;max-width:520px;background:#fff;border-radius:14px;padding:20px;border:1px solid #e5e7eb}
+    @media (max-width:980px){.app{grid-template-columns:1fr}.sidebar{position:sticky;top:0;z-index:20;border-left:none;border-bottom:1px solid #e5e7eb}}
+  </style>
+</head>
+<body>
+
+<section id="auth" class="auth">
+  <div class="panel stack">
+    <div class="brand">🔵 شبكتي</div>
+    <div class="tabs row">
+      <button id="tabLogin" class="btn primary" onclick="showAuthTab('login')">تسجيل الدخول</button>
+      <button id="tabRegister" class="btn" onclick="showAuthTab('register')">إنشاء حساب</button>
+    </div>
+    <div id="loginForm" class="stack">
+      <input id="login_username" class="input" placeholder="اسم المستخدم" />
+      <input id="login_password" class="input" type="password" placeholder="كلمة المرور" />
+      <button class="btn primary" onclick="handleLogin()">دخول</button>
+    </div>
+    <div id="registerForm" class="stack hidden">
+      <input id="reg_username" class="input" placeholder="اسم المستخدم" />
+      <input id="reg_email" class="input" type="email" placeholder="البريد الإلكتروني" />
+      <input id="reg_password" class="input" type="password" placeholder="كلمة المرور" />
+      <input id="reg_avatar" class="input" placeholder="رابط صورة (اختياري)" />
+      <button class="btn success" onclick="handleRegister()">تسجيل</button>
+    </div>
+    <div class="muted">حساب الأدمن الافتراضي: <b>admin</b> / <b>admin123</b></div>
+  </div>
+</section>
+
+<section id="app" class="app hidden">
+  <aside class="sidebar">
+    <div class="brand">🔵 شبكتي</div>
+    <div class="nav">
+      <button id="btnHome" class="active" onclick="goPage('home')">الرئيسية</button>
+      <button id="btnFriends" onclick="goPage('friends')">الأصدقاء</button>
+      <button id="btnMessages" onclick="goPage('messages')">الرسائل</button>
+      <button id="btnProfile" onclick="goPage('profile')">الملف الشخصي</button>
+      <button id="btnAdmin" class="hidden" onclick="goPage('admin')">لوحة التحكم</button>
+    </div>
+    <button class="logout" onclick="logout()">تسجيل الخروج</button>
+  </aside>
+
+  <main class="content">
+    <div class="topbar">
+      <div class="search"><input id="globalSearch" placeholder="ابحث عن أشخاص أو منشورات..." oninput="renderAll()"/></div>
+      <div class="row" id="currentUserMini">
+        <img id="miniAvatar" class="avatar" alt=""/>
+        <div>
+          <div id="miniName" style="font-weight:700"></div>
+          <div id="miniEmail" class="muted"></div>
+        </div>
+      </div>
+    </div>
+
+    <section id="page_home" class="page active">
+      <div class="stack">
+        <div class="card composer">
+          <div class="row">
+            <img id="composerAvatar" class="avatar" alt=""/>
+            <input id="postText" class="input" placeholder="اكتب منشورًا..."/>
+          </div>
+          <div class="between">
+            <input id="postImage" type="file" accept="image/*"/>
+            <button class="btn primary" onclick="createPost()">نشر</button>
+          </div>
+        </div>
+        <div id="feed" class="stack"></div>
+      </div>
+    </section>
+
+    <section id="page_friends" class="page">
+      <div class="stack">
+        <div class="card">
+          <div class="between">
+            <h3>طلبات الصداقة المستلمة</h3>
+            <span id="requestsCount" class="btn ghost">0</span>
+          </div>
+          <div id="incomingRequests" class="stack"></div>
+        </div>
+        <div class="card">
+          <h3>الأصدقاء</h3>
+          <div id="friendsList" class="grid"></div>
+        </div>
+        <div class="card">
+          <h3>أشخاص قد تعرفهم</h3>
+          <div id="suggestedList" class="grid"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="page_messages" class="page">
+      <div class="messagesLayout">
+        <div id="threads" class="threadList"></div>
+        <div class="chat">
+          <div id="chatLog" class="chatLog"></div>
+          <div class="row" style="border-top:1px solid #e5e7eb;padding:10px;">
+            <input id="chatInput" class="input" placeholder="اكتب رسالة..." onkeydown="if(event.key==='Enter') sendMessage()"/>
+            <button class="btn primary" onclick="sendMessage()">إرسال</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="page_profile" class="page">
+      <div class="stack" style="max-width:680px;">
+        <div class="card row">
+          <img id="profileAvatar" class="avatar" alt=""/>
+          <div>
+            <div id="profileName" style="font-weight:700"></div>
+            <div id="profileEmail" class="muted"></div>
+          </div>
+        </div>
+        <div class="card stack">
+          <h3>تعديل الحساب</h3>
+          <input id="edit_name" class="input" placeholder="الاسم"/>
+          <input id="edit_email" class="input" type="email" placeholder="البريد"/>
+          <input id="edit_avatar" class="input" placeholder="رابط الصورة"/>
+          <textarea id="edit_bio" placeholder="نبذة مختصرة"></textarea>
+          <div class="row">
+            <input id="edit_pass" class="input" type="password" placeholder="كلمة مرور جديدة (اختياري)"/>
+            <button class="btn warn" onclick="changePassword()">تغيير كلمة المرور</button>
+          </div>
+          <button class="btn success" onclick="saveProfile()">حفظ</button>
+        </div>
+        <div class="card stack">
+          <h3>منشوراتي</h3>
+          <div id="myPosts" class="stack"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="page_admin" class="page">
+      <div class="stack">
+        <div class="card">
+          <h3>لوحة التحكم</h3>
+          <div class="row" style="flex-wrap:wrap;gap:8px">
+            <div class="btn ghost">👥 المستخدمون: <b id="statUsers">0</b></div>
+            <div class="btn ghost">📝 المنشورات: <b id="statPosts">0</b></div>
+            <div class="btn ghost">✉️ الرسائل: <b id="statMsgs">0</b></div>
+          </div>
+        </div>
+        <div class="card">
+          <h3>إدارة المستخدمين</h3>
+          <table class="table" id="usersTable">
+            <thead><tr><th>#</th><th>الاسم</th><th>البريد</th><th>الدور</th><th>منشورات</th><th>محظور</th><th>إجراءات</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="card">
+          <h3>كل المنشورات</h3>
+          <div id="allPostsAdmin" class="stack"></div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</section>
+
+<script>
+// ===== Storage Keys =====
+const LS_USERS='mini_users';
+const LS_CURRENT='mini_current';
+const LS_MESSAGES='mini_messages';
+
+// ===== Helpers =====
+const $=s=>document.querySelector(s);
+const $$=s=>Array.from(document.querySelectorAll(s));
+const byId=id=>document.getElementById(id);
+function readUsers(){return JSON.parse(localStorage.getItem(LS_USERS)||'[]')}
+function writeUsers(a){localStorage.setItem(LS_USERS,JSON.stringify(a))}
+function currentId(){return JSON.parse(localStorage.getItem(LS_CURRENT)||'null')}
+function setCurrent(id){localStorage.setItem(LS_CURRENT,JSON.stringify(id))}
+function readMessages(){return JSON.parse(localStorage.getItem(LS_MESSAGES)||'{}')}
+function writeMessages(m){localStorage.setItem(LS_MESSAGES,JSON.stringify(m))}
+function uid(){return 'u_'+Math.random().toString(36).slice(2,10)}
+function now(){return Date.now()}
+function fmt(ts){return new Date(ts).toLocaleString('ar-EG')}
+function threadKey(a,b){return [a,b].sort().join('|')}
+function getUserById(id){return readUsers().find(u=>u.id===id)}
+
+// ===== Seed Demo + Admin =====
+(function seed(){
+  let users=readUsers();
+  if(users.length===0){
+    const admin={id:uid(),role:'admin',blocked:false,username:'admin',email:'admin@local',password:'admin123',avatar:'https://i.pravatar.cc/120?u=admin',bio:'مدير الشبكة',friends:[],requests:[],posts:[]};
+    const u1={id:uid(),role:'user',blocked:false,username:'ahmed',email:'ahmed@example.com',password:'1234',avatar:'https://i.pravatar.cc/120?img=12',bio:'أحب التصوير والسفر',friends:[],requests:[],posts:[]};
+    const u2={id:uid(),role:'user',blocked:false,username:'mona',email:'mona@example.com',password:'1234',avatar:'https://i.pravatar.cc/120?img=32',bio:'مصممة جرافيك',friends:[],requests:[],posts:[]};
+    u1.posts.push({id:uid(),text:'مرحبا بالجميع! 🙂',img:'',likes:[],comments:[],ts:now()-3600000});
+    u2.posts.push({id:uid(),text:'أول بوست لي هنا ✨',img:'',likes:[],comments:[],ts:now()-7200000});
+    users=[admin,u1,u2];
+    writeUsers(users);
+  }
+})();
+
+// ===== Auth =====
+function showAuthTab(which){
+  byId('loginForm').classList.toggle('hidden',which!=='login');
+  byId('registerForm').classList.toggle('hidden',which==='login');
+  byId('tabLogin').classList.toggle('primary',which==='login');
+  byId('tabRegister').classList.toggle('primary',which!=='login');
+}
+function handleLogin(){
+  const u=byId('login_username').value.trim();
+  const p=byId('login_password').value;
+  let users=readUsers();
+  let found=users.find(x=>x.username===u&&x.password===p);
+  if(!found){alert('❌ بيانات الدخول غير صحيحة');return}
+  if(found.blocked){alert('⛔ حسابك محظور.');return}
+  setCurrent(found.id);
+  enterApp();
+}
+function handleRegister(){
+  let users=readUsers();
+  const username=byId('reg_username').value.trim();
+  const email=byId('reg_email').value.trim();
+  const password=byId('reg_password').value;
+  const avatar=byId('reg_avatar').value.trim()||`https://i.pravatar.cc/120?u=${encodeURIComponent(username)}`;
+  if(!username||!email||!password){alert('أكمل كل الحقول');return}
+  if(users.some(u=>u.username===username)){alert('⚠️ اسم المستخدم مستخدم');return}
+  const user={id:uid(),role:'user',blocked:false,username,email,password,avatar,bio:'',friends:[],requests:[],posts:[]};
+  users.push(user);writeUsers(users);
+  alert('✅ تم التسجيل. سجّل دخولك');showAuthTab('login');
+}
+function enterApp(){
+  byId('auth').classList.add('hidden');byId('app').classList.remove('hidden');
+  hydrateHeader();goPage('home');renderAll();
+  const me=getCurrentUser(); if(me.role==='admin'){byId('btnAdmin').classList.remove('hidden')}
+}
+function logout(){setCurrent(null);location.reload()}
+
+function getCurrentUser(){const id=currentId();return readUsers().find(u=>u.id===id)}
+
+// ===== Routing =====
+function goPage(key){
+  $$('.nav button').forEach(b=>b.classList.remove('active'));
+  const btn=byId('btn'+key.charAt(0).toUpperCase()+key.slice(1)); if(btn) btn.classList.add('active');
+  $$('.page').forEach(p=>p.classList.remove('active'));
+  const pg=byId('page_'+key); if(pg) pg.classList.add('active');
+  if(key==='messages'){renderThreads()}
+  if(key==='admin'){renderAdmin()}
+}
+
+// ===== Header & Profile =====
+function hydrateHeader(){
+  const u=getCurrentUser();
+  byId('miniAvatar').src=u.avatar; byId('miniName').textContent=u.username; byId('miniEmail').textContent=u.email;
+  byId('composerAvatar').src=u.avatar;
+  byId('profileAvatar').src=u.avatar; byId('profileName').textContent=u.username; byId('profileEmail').textContent=u.email;
+  byId('edit_name').value=u.username; byId('edit_email').value=u.email; byId('edit_avatar').value=u.avatar; byId('edit_bio').value=u.bio||'';
+}
+function saveProfile(){
+  let users=readUsers(); const idx=users.findIndex(u=>u.id===currentId()); if(idx<0)return;
+  users[idx].username=byId('edit_name').value||users[idx].username;
+  users[idx].email=byId('edit_email').value||users[idx].email;
+  users[idx].avatar=byId('edit_avatar').value||users[idx].avatar;
+  users[idx].bio=byId('edit_bio').value||'';
+  writeUsers(users); hydrateHeader(); renderAll(); alert('✅ تم الحفظ');
+}
+function changePassword(){
+  let users=readUsers(); const idx=users.findIndex(u=>u.id===currentId()); if(idx<0)return;
+  const np=byId('edit_pass').value.trim(); if(!np){alert('أدخل كلمة مرور');return}
+  users[idx].password=np; writeUsers(users); byId('edit_pass').value=''; alert('🔒 تم تغيير كلمة المرور');
+}
+
+// ===== Posts =====
+let uploadImageData='';
+byId('postImage').addEventListener('change',e=>{
+  const f=e.target.files[0]; if(!f){uploadImageData='';return}
+  const r=new FileReader(); r.onload=()=>{uploadImageData=r.result}; r.readAsDataURL(f);
+});
+function createPost(){
+  const text=byId('postText').value.trim(); if(!text && !uploadImageData) return;
+  let users=readUsers(); const meIdx=users.findIndex(u=>u.id===currentId());
+  users[meIdx].posts.unshift({id:uid(),text,img:uploadImageData||'',likes:[],comments:[],ts:now()});
+  writeUsers(users); byId('postText').value=''; uploadImageData=''; byId('postImage').value=''; renderFeed(); renderMyPosts();
+}
+function toggleLike(ownerId,postId){
+  const users=readUsers(); const me=getCurrentUser(); const o=users.find(u=>u.id===ownerId); const p=o.posts.find(p=>p.id===postId);
+  p.likes=p.likes||[]; const i=p.likes.indexOf(me.id); if(i>-1){p.likes.splice(i,1)} else {p.likes.push(me.id)}
+  writeUsers(users); renderFeed(); renderMyPosts();
+}
+function addCommentPrompt(ownerId,postId){
+  const t=prompt('اكتب تعليقك:'); if(!t) return; addComment(ownerId,postId,t);
+}
+function addComment(ownerId,postId,text){
+  const users=readUsers(); const me=getCurrentUser(); const o=users.find(u=>u.id===ownerId); const p=o.posts.find(p=>p.id===postId);
+  p.comments=p.comments||[]; p.comments.push({id:uid(),userId:me.id,username:me.username,avatar:me.avatar,text,ts:now()});
+  writeUsers(users); renderFeed(); renderMyPosts();
+}
+function deleteMyPost(id){
+  const users=readUsers(); const meIdx=users.findIndex(u=>u.id===currentId()); users[meIdx].posts=users[meIdx].posts.filter(p=>p.id!==id);
+  writeUsers(users); renderFeed(); renderMyPosts();
+}
+function renderComments(ownerId,postId){
+  const users=readUsers(); const u=users.find(x=>x.id===ownerId); const post=u.posts.find(p=>p.id===postId); const wrap=byId('comments_'+postId);
+  wrap.innerHTML=''; (post.comments||[]).forEach(c=>{ const d=document.createElement('div'); d.className='comment';
+    d.innerHTML=`<div class="between"><div class="row"><img class="avatar" src="${c.avatar}"><b>${c.username}</b></div><span class="muted">${fmt(c.ts)}</span></div><div>${c.text}</div>`; wrap.appendChild(d);
+  });
+}
+function renderFeed(){
+  const q=byId('globalSearch').value.trim().toLowerCase(); const users=readUsers(); const me=getCurrentUser();
+  const visible=new Set([me.id,...me.friends]); let all=[];
+  users.forEach(u=>{ if(visible.has(u.id)){ (u.posts||[]).forEach(p=>all.push({user:u,post:p})) }});
+  all.sort((a,b)=>b.post.ts-a.post.ts); if(q) all=all.filter(x=>x.post.text.toLowerCase().includes(q)||x.user.username.toLowerCase().includes(q));
+  const feed=byId('feed'); feed.innerHTML=''; if(all.length===0){feed.innerHTML='<div class="muted">لا توجد منشورات.</div>'; return}
+  for(const {user,post} of all){ const el=document.createElement('div'); el.className='card post';
+    const liked=(post.likes||[]).includes(me.id);
+    el.innerHTML=`<div class="meta row"><img class="avatar" src="${user.avatar}"><div><b>${user.username}</b><div class="muted">${fmt(post.ts)}</div></div></div>
+    <div>${post.text}</div>${post.img?`<img class="media" src="${post.img}" alt="صورة">`:''}
+    <div class="row muted">👍 ${post.likes?.length||0} • 💬 ${post.comments?.length||0}</div>
+    <div class="row"><button class="btn ghost" onclick="toggleLike('${user.id}','${post.id}')">${liked?'إلغاء الإعجاب':'إعجاب'}</button>
+    <button class="btn ghost" onclick="addCommentPrompt('${user.id}','${post.id}')">تعليق</button></div>
+    <div id="comments_${post.id}" class="stack"></div>`;
+    feed.appendChild(el); renderComments(user.id,post.id);
+  }
+}
+function renderMyPosts(){
+  const me=getCurrentUser(); const list=byId('myPosts'); list.innerHTML=''; const mine=[...(me.posts||[])].sort((a,b)=>b.ts-a.ts);
+  if(mine.length===0){list.innerHTML='<div class="muted">لا منشورات بعد.</div>';return}
+  for(const p of mine){ const c=document.createElement('div'); c.className='card post';
+    c.innerHTML=`<div class="between"><div class="muted">${fmt(p.ts)}</div><button class="btn danger" onclick="deleteMyPost('${p.id}')">حذف</button></div>
+    <div>${p.text}</div>${p.img?`<img class="media" src="${p.img}">`:''}
+    <div class="muted">👍 ${p.likes?.length||0} • 💬 ${p.comments?.length||0}</div>`;
+    list.appendChild(c);
+  }
+}
+
+// ===== Friends =====
+function renderFriends(){
+  const users=readUsers(); const me=getCurrentUser();
+  const incoming=me.requests||[]; byId('requestsCount').textContent=incoming.length;
+  const incomingWrap=byId('incomingRequests'); incomingWrap.innerHTML='';
+  for(const rid of incoming){ const u=users.find(x=>x.id===rid); if(!u) continue;
+    const row=document.createElement('div'); row.className='card between';
+    row.innerHTML=`<div class="row"><img class="avatar" src="${u.avatar}"><div><b>${u.username}</b><div class="muted">${u.email}</div></div></div>
+    <div class="row"><button class="btn success" onclick="accept('${u.id}')">قبول</button><button class="btn danger" onclick="rejectReq('${u.id}')">رفض</button></div>`;
+    incomingWrap.appendChild(row);
+  }
+  const friendsWrap=byId('friendsList'); friendsWrap.innerHTML='';
+  for(const fid of me.friends){ const u=users.find(x=>x.id===fid); if(!u) continue;
+    const card=document.createElement('div'); card.className='card';
+    card.innerHTML=`<div class="between"><div class="row"><img class="avatar" src="${u.avatar}"><div><b>${u.username}</b><div class="muted">${u.email}</div></div></div>
+    <button class="btn warn" onclick="openChat('${u.id}')">مراسلة</button></div>`; friendsWrap.appendChild(card);
+  }
+  const sugWrap=byId('suggestedList'); sugWrap.innerHTML=''; const blocked=new Set([me.id,...me.friends,...me.requests]);
+  const sentToMe=users.filter(u=>(u.requests||[]).includes(me.id)).map(u=>u.id); sentToMe.forEach(id=>blocked.add(id));
+  for(const u of users){ if(blocked.has(u.id)) continue;
+    const c=document.createElement('div'); c.className='card';
+    c.innerHTML=`<div class="row"><img class="avatar" src="${u.avatar}"><div><b>${u.username}</b><div class="muted">${u.bio||''}</div></div></div>
+    <button class="btn primary" style="margin-top:8px" onclick="sendRequest('${u.id}')">إضافة صديق</button>`; sugWrap.appendChild(c);
+  }
+}
+function sendRequest(targetId){
+  const users=readUsers(); const idx=users.findIndex(u=>u.id===targetId); if(idx<0) return;
+  users[idx].requests=users[idx].requests||[]; if(!users[idx].requests.includes(currentId())) users[idx].requests.push(currentId());
+  writeUsers(users); alert('✅ تم إرسال الطلب'); renderFriends();
+}
+function accept(fromId){
+  const users=readUsers(); const meIdx=users.findIndex(u=>u.id===currentId()); const otherIdx=users.findIndex(u=>u.id===fromId);
+  users[meIdx].requests=(users[meIdx].requests||[]).filter(id=>id!==fromId);
+  if(!users[meIdx].friends.includes(fromId)) users[meIdx].friends.push(fromId);
+  if(!users[otherIdx].friends.includes(users[meIdx].id)) users[otherIdx].friends.push(users[meIdx].id);
+  writeUsers(users); renderFriends(); renderThreads();
+}
+function rejectReq(fromId){
+  const users=readUsers(); const meIdx=users.findIndex(u=>u.id===currentId());
+  users[meIdx].requests=(users[meIdx].requests||[]).filter(id=>id!==fromId); writeUsers(users); renderFriends();
+}
+
+// ===== Messages =====
+let activeThread=null;
+function renderThreads(){
+  const me=getCurrentUser(); const users=readUsers(); const threads=byId('threads'); threads.innerHTML='';
+  for(const fid of me.friends){ const u=users.find(x=>x.id===fid); if(!u) continue;
+    const item=document.createElement('div'); item.className='threadItem'+(activeThread===u.id?' active':''); item.innerHTML=`<img class="avatar" src="${u.avatar}"><div><b>${u.username}</b><div class="muted">${u.email}</div></div>`;
+    item.onclick=()=>{openChat(u.id)}; threads.appendChild(item);
+  }
+  if(!activeThread && me.friends[0]) openChat(me.friends[0]);
+}
+function openChat(friendId){ activeThread=friendId; renderThreads(); renderChat(); }
+function renderChat(){
+  const me=getCurrentUser(); const msgs=readMessages(); const key=threadKey(me.id,activeThread); const list=msgs[key]||[]; const log=byId('chatLog');
+  log.innerHTML=''; for(const m of list){ const div=document.createElement('div'); div.className='bubble'+(m.from===me.id?' me':''); div.textContent=`${m.text} • ${fmt(m.ts)}`; log.appendChild(div) }
+  log.scrollTop=log.scrollHeight;
+}
+function sendMessage(){
+  if(!activeThread) return; const input=byId('chatInput'); const text=input.value.trim(); if(!text) return;
+  const me=getCurrentUser(); const msgs=readMessages(); const key=threadKey(me.id,activeThread); msgs[key]=msgs[key]||[];
+  msgs[key].push({from:me.id,to:activeThread,text,ts:now()}); writeMessages(msgs); input.value=''; renderChat();
+}
+
+// ===== Admin =====
+function isAdmin(){ const me=getCurrentUser(); return me && me.role==='admin' }
+function renderAdmin(){
+  if(!isAdmin()){ alert('صلاحيات أدمن فقط'); goPage('home'); return }
+  // إحصائيات
+  const users=readUsers(); let postCount=0; users.forEach(u=>postCount+= (u.posts||[]).length);
+  const msgs=readMessages(); let msgCount=0; Object.values(msgs).forEach(v=>msgCount+=v.length);
+  byId('statUsers').textContent=users.length; byId('statPosts').textContent=postCount; byId('statMsgs').textContent=msgCount;
+  // جدول المستخدمين
+  const tb=byId('usersTable').querySelector('tbody'); tb.innerHTML='';
+  users.forEach((u,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td>${i+1}</td><td>${u.username}</td><td>${u.email||''}</td><td>${u.role}</td><td>${(u.posts||[]).length}</td><td>${u.blocked?'نعم':'لا'}</td>
+    <td class="row">
+      <button class="btn warn" onclick="adminToggleRole('${u.id}')">تبديل الدور</button>
+      <button class="btn danger" onclick="adminToggleBlock('${u.id}')">${u.blocked?'فك الحظر':'حظر'}</button>
+      <button class="btn" onclick="adminImpersonate('${u.id}')">دخول كمستخدم</button>
+      <button class="btn danger" onclick="adminDeleteUser('${u.id}')">حذف</button>
+    </td>`;
+    tb.appendChild(tr);
+  });
+  // كل المنشورات
+  const wrap=byId('allPostsAdmin'); wrap.innerHTML='';
+  users.forEach(u=> (u.posts||[]).forEach(p=>{
+    const card=document.createElement('div'); card.className='card post';
+    card.innerHTML=`<div class="between"><div class="row"><img class="avatar" src="${u.avatar}"><div><b>${u.username}</b><div class="muted">${fmt(p.ts)}</div></div></div>
+    <button class="btn danger" onclick="adminDeletePost('${u.id}','${p.id}')">حذف</button></div>
+    <div>${p.text}</div>${p.img?`<img class="media" src="${p.img}">`:''}
+    <div class="muted">👍 ${p.likes?.length||0} • 💬 ${p.comments?.length||0}</div>`;
+    wrap.appendChild(card);
+  }));
+}
+function adminToggleRole(uidx){
+  const users=readUsers(); const i=users.findIndex(u=>u.id===uidx); if(i<0)return;
+  users[i].role = users[i].role==='admin'?'user':'admin'; writeUsers(users); renderAdmin();
+}
+function adminToggleBlock(uidx){
+  const users=readUsers(); const i=users.findIndex(u=>u.id===uidx); if(i<0)return;
+  users[i].blocked=!users[i].blocked; writeUsers(users); renderAdmin();
+}
+function adminDeleteUser(uidx){
+  if(!confirm('هل أنت متأكد من حذف المستخدم؟')) return;
+  let users=readUsers(); users=users.filter(u=>u.id!==uidx);
+  // إزالة من قوائم الأصدقاء والطلبات
+  users.forEach(u=>{u.friends=(u.friends||[]).filter(id=>id!==uidx);u.requests=(u.requests||[]).filter(id=>id!==uidx)});
+  writeUsers(users); renderAdmin();
+}
+function adminDeletePost(ownerId,postId){
+  const users=readUsers(); const i=users.findIndex(u=>u.id===ownerId); if(i<0)return;
+  users[i].posts=users[i].posts.filter(p=>p.id!==postId); writeUsers(users); renderAdmin();
+}
+function adminImpersonate(uidx){
+  setCurrent(uidx); hydrateHeader(); alert('تم الدخول بهذا المستخدم مؤقتًا'); goPage('home'); renderAll();
+}
+
+// ===== Render All & Boot =====
+function renderAll(){ renderFeed(); renderFriends(); renderMyPosts(); if(byId('page_messages').classList.contains('active')) renderThreads(); }
+(function boot(){ const id=currentId(); if(id){ byId('auth').classList.add('hidden'); byId('app').classList.remove('hidden'); hydrateHeader(); renderAll(); const me=getCurrentUser(); if(me.role==='admin') byId('btnAdmin').classList.remove('hidden'); } else { showAuthTab('login'); } })();
+</script>
+</body>
+</html>
